@@ -132,8 +132,30 @@ create the Order Controller add @RestController, @RequestMapping("/api/order")
 create a PostMethod as placeOrder(OrderRequest) which will return the String as "order placed succesffully", OrderRequest has the List of OrderLineItemsDTO 
 
 
+create the test cases.
+
+change the port because previous microservice is on 8080 by default
 
 
+see now the order is placed but now we need to check the inventory is available or not, so need to create the Inventory Service
+
+create a new service as InventoryService with dependencies -> Spring web, lombok, spring data jpa, mysql
+
+
+QUESTION:
+he didn't add the inventory service in parent folder where other services are, he said he is facing some issues, we will add them to one project using maven multimodules concept??????/
+
+create the Entity Inventory with table name 't_inventory' with fields like id,skucode, quantity
+create repo, controller, service
+
+create a getmapping method as isInStock which returns true or false -> takes the skucode as path variable
+
+when to get the value using path variable???? I can take using requestParam too right??? 
+
+create a service and provide the implementation of isInStock method.
+create method findBySkucode which will return the Optional of Inventory then use the isPresent method in service
+added the @Transactional(readOnly = true)
+create 2 Inventory object in mainapplication.class with CommandLineRunner Bean (Explore it). loadData method with InventoryRepository parameter.
 
 
 
