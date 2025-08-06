@@ -1,0 +1,156 @@
+Microservice Project
+
+Product Service: Create and View Products, acts as Product Catalog.
+
+Order Service: Can Order Products.
+
+Inventory Service: Can check if product is in stock or not.
+
+Notification Service: Can send notifications, after order is placed.
+
+** Order Service, Inventory Service, Notification Service are going to interact with each other.
+
+** Will have the Synchronous and Asynchronous Communication.
+
+
+For Asynchronous Communication we are going to use of 2 softwares Message Queues like Kafka and Rabbit MQ's
+
+We will use the KeyCloak as Authorization server
+
+we will use Vault to store the secrets.
+
+Zipkin for distributed tracing
+
+For logging we will use Elasticsearch, logstash, Kibana.
+
+Create the Product Service From Spring Initializer and add dependencies like spring cloud, spring web, eureka client, Lombok, mongodb
+
+setup the mongo db in Product service and configure it in application.properties (uri, username, password, 
+uri = mongodb://localhost:27817/product-service
+
+
+
+Create a model pkg and create a Product Class there. make it Document
+@Document(value = "Product")
+Add All Lombok annotations
+
+** Learn about @Builder
+
+Product has @ID id, name, description, price
+
+Create a repository package and create an interface as ProductRepository extends MongoRepository<Product,String>
+
+Create a Controller package and create ProductController, annotate it with RestController, RequestMapping("/api/product")
+
+create Api's for create, get, getAll (use @ResponseStatus for returning response)
+
+create a ProductRequest DTO (have all fields except id because we will autogenerate it)
+
+create service package and ProductService class to create methods related to them.
+
+use builder method to build the Product Object
+
+use slf4j for logging
+
+create ProductResponse DTO for response, return everything, even id because we can use it in Order or Product identification,
+
+
+Write the tests for the Product service in test package-> ProductServiceApplicationTests class
+we are going the write the Integration test.
+
+first install a library called TestContainers -> Java Library that supports the unit tests.
+
+
+Learn about selenium.
+
+add the maven dependency of TestContainers
+
+BOM -> Bill of Materials
+if we want to put the same version for all the components like for Kafka, MongoDB then use BOM dependency
+take the mongodb maven dependency from TestContainers documentation
+and remove the version because we have defined it in BOM dependency, otherwise it may cause issue
+as we are using the JUnit 5 for testing so we need that dependency too for TestContainers and put the junit-jupiter dependency and remove the version
+
+Let's start writing the integration test
+add @TestContainers Annotation on top of the class and define the MongoDb Container inside the Test class and create its object 
+
+MongoDbContainer is deprecated because we cannot use the NoArgsConstructor anymore, we have to manually specify the version of the MongoDbContainer, so for that we need to provide the docker image name, we are providing as "mongo:4.4.2" so this is the mongo version we want to use for test. add @Container at top of the MongoDbContainer instance and make it static .
+
+create the static setProperties method and add annotation @DynamicPropertySource with DynamicPropertyRegistry parameter and call the add method with 2 parameters, one is uri "spring.data.mongodb.uri", mongodbcontainer::getReplicaSetUrl)
+ 
+
+
+so at the time of starting the integration test, first test will start the mongodbcontainer with specified docker image and then it will get the replicaSetUrl and add to mongodb.uri property at time of creating the test,
+we are taking the image for mongodb for testing because we dont want to use our local db
+
+
+
+
+Now we are creating the test case for createProduct api in which we are expecting the ResponseStatus.Created as Response
+@Test
+void shouldCreateProduct() throws JsonProcessingException{
+
+ProductRequest productRequest = getProductRequest() //but content method needs a string not pojo, so we can use the ObjectMapper object which will convert the POJO in to JSON, Autowire the Object Mapper
+
+String productJson = objectMapper.writeValueAsString(productRequest);
+
+mockMVC.perform(MockMvcRequestBuilders.post("/api/product")) 
+	.contentType(MediaType.Application_JSON)
+	.content(productJson)
+	.andExpect(status().isCreated());
+
+Assertions.assertEquals(1,productRepository.findAll().size());
+}
+
+okay now run the test
+
+ProductRequest getProductRequest(){
+return ProductRequest.builder().name("iPhone 13").description("iPhone 13").price(1200).build();
+}
+
+
+to be able to make a request from our integration test we need to use the MOCK MVC which will provide us the mocked servlet environment where we can call our controllers
+Autowired the MockMVC mockMVC object, it will give error because we need to auto configure the MOCKMVC, add @AutoConfigureMockMVC at top of the class, now use object in methods
+
+There is a playlist on JUnit5 and Mockito testing, go check it out 
+
+
+EXERCISE:
+
+Create the getProduct Test 
+
+
+
+Now Create the ORDER Service
+
+add dependencies -> Spring Web, Lombok, MySQL Driver, Data JPA 
+
+now create the model package and ORDER Entity with fields -> id, orderNumber, List of OrderLineItems which as skucode, price, quantity and make relationship
+
+create the Order Controller add @RestController, @RequestMapping("/api/order")
+
+create a PostMethod as placeOrder(OrderRequest) which will return the String as "order placed succesffully", OrderRequest has the List of OrderLineItemsDTO 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
