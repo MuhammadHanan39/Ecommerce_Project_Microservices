@@ -184,7 +184,49 @@ just to verify, everything is working fine, we can run a command as mvn clean ve
 
 
 
+================== Need to learn the Liquibase ===================
 
+================ Communication Between Services ==========================
+2 types of communication
+	Synchronous	Asynchronous
+
+Order service will have the Synchronous communication with Inventory, and Async with Notification service
+
+ ==== Inter Process Communication ===
+Order Service will hit a http request to Inventory service and will get response in status of the product that the product is in stock or not, so based on this response the Order Service will either place the order successfully or will through exception or some error that the product is out of stock
+so this kind of communication where the service A is waiting for the response of Service B is known as Synchronous Communication.
+
+this kind of request(synchronous communication) are done by http clients (RestTemplate, WebClient). RestTemplate is by default in spring boot framework and we have another client as WebClient it comes from spring WebFlux project
+RestTemplate is in maintanance mode, so Spring boot recommends to use the WebClient, and it also supports sync, async and streaming scenarios. 
+
+Asynchronous is the "Fire and forget" approach 
+
+Let's go to code where the Order service will call the Inventory service
+
+we have created placeOrder method in Order Service so before saving the Order we need to first communicate with Inventory service and ask that is Inventory Available by calling its isAvailable method which will return boolean? then we will save or provide Exception.
+configure the WebClient in order service, create a package name as config and create a java class as WebClientConfig, add the @Configuration  and define the Bean of WebClient, we cannot find the WebCient class because its part of WebFlux so we need to add its dependency, @Bean annotation create the bean with name which is the method name
+now use the WebClient in order Service class use it in placeOrder method
+By defaulte the client will hit the Asynchronous request, for synchronous request we have to call the block() method
+Boolean isInStock = webClient.get().uri("http://localhost:8082/api/inventory/{skucode}").retrive().bodyToMono(Boolean.class).block();  
+if(isInStock){
+save
+}else{
+exception
+}
+
+but there is a problem, Inventory url is taking the skucode in path url and our order has multiple skucode, so we will not hit the http request for each skucode which is time taking and not a good practice 
+we can collect all the skucode in one list and then we can provide it to inventory service api, need to modify the isInStock method of Inventory service where we take the list in path variable
+/api/inventory/iphone13 -> this will be the url if there is one skucode, if more then /inventory/iphone13,iphone13-red -> this is how the path variable format looks like
+
+and if we use the requestParam to get the skucode then it will look like: /api/inventory?sku-code = iphone13 & sku-code = iphone13-red 
+we should go for request param format because it is more readable 
+
+remove the path variable and add @RequestParam List<String> skucode and update other logic
+create the Inventory Response DTO which will have the skucode and isInStock and method will return the List of InventoryResponse
+now in Order service first collect all the squcode from the order and pass it
+
+.uri("http://localhost:8082/api/inventory/{skucode}", uriBuilder -> uriBuilder.queryParam("skuCode",skuCodes).build().
+and to store the response we also need to create the InventoryResponse class and get the array of them and implement the logic 
 
 
 
