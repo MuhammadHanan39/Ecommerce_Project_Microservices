@@ -231,7 +231,31 @@ and to store the response we also need to create the InventoryResponse class and
 
 
 
+================ Spring Cloud =========
+now before we were using the localhost:8082 or others to call the api, so the problem is, it works when its in our local machine, we need to deploy them on cloud and in cloud environment we cannot have a dedicated IP addresses, everything should be dynamic
+
+we can have multiple instances of Inventory service and each instances can have a dynamic IP addresses, so in this case how our order service will know which instance to call, even if we can hardcored any instance because that instance can go down so for that we have a ServiceDiscovery pattern.
+ServiceDiscovery is a concept of creating a server called as DiscoveryServer where it has all information of services that are registered like name,IP Address, Status(up,down)  
+
+====communication with Service Discovery ========
+
+Order service will first make a call to Discovery Server asking where I can find the Inventory service and discovery server will respond with particular IP address and then order service will make the call to the Inventory service, this is how we can avoid the hardcoded service 
+when making the initial call to discovery server, discovery server will also send the registry as the response to the client , client will then store the local copy of discover server in a separate location, so if for any reason, discovery server is not available it first check the local copy, if first instance of inventory service is not available then it will check the 2nd copy   
 
 
+create a new module named as discovery-server, add a dependency of Netflix Eureka(EurekaServer), this dependency has the diffenert groupid as org.springframework.cloud, so we need to add the dependency management tag (BOM dependency) copy that and paste it in root pom.xml
+and need to provide the version of cloud, so add a tag in properties tag <spring-cloud.version>2021.0.2</spring-cloud.version>
+create the pkg com.programming.techie.discoveryserver and create a class DiscoverServerApp and add @SpringBootAppliction, create the main method as we have create a module using maven project so that's why we need to add these things
+add @EnableEurekaServer at top of the class 
+create the application.properties file 
+eureka.instance.hostname = localhost
+eureka.client.register-with-eureka = false // don't register itself 
+eureka.client.fetch-registry = false //don't fetch the registry of server in eureka server, we will make this field true in eureka client because we want client to fetch registry and store a copy of it.
+server.port = 8761 //default port of eureka server 
+run the project 
 
+now need to define the eureka clients, add the eureka client dependency in every service we have created and add the annotation @EnableEurekaClient and now need to implement some configuration
+eureka.client.serviceurl.defaultZone = http://localhost:8761/eureka       //property is set so that our client can find the eureka server
+we can check the services on http://localhost:8761
+spring.application.name = inventory-service  //change for others 	
 
