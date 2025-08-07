@@ -160,10 +160,27 @@ create 2 Inventory object in mainapplication.class with CommandLineRunner Bean (
 
 
 
+================== CommandLineRunner Bean ================
+special type of bean used to execute code after the SpringApplicationContext is fully initialized.
+Typically used to run some initial logic( e.g loading data, database initialization, printing debug info).
+Test or trigger some Logic at application startup.
+
+we can define multiple CommandLineRunner Bean and also arrange them in order with @Order(1),@Order(2)
 
 
+================= Clubbing the Projects =============
+Create a new Maven Project -> go to file -> new project-> Maven -> next -> name ="Microservices New"
+Now we are going to create 3 modules -> one for product, one for Order, and one for Inventory
+Right click on project -> new -> module -> name as product-service also create for order and inventory service, delete the src folder
+now we need to migrate every services under this microservices-new project
+open the Product service copy all the dependencies and paste it in product-service which is in microservice-new, do same for order and inventory 
+and add dependencymanagement tag in root pom of the project which is pom of microservices-new so that it could use for every services
+In previous project out parent is org.springframework.boot, so in microservices-new project which we create as maven project doesn't have this parent, copy the parent from previous one and paste it in parent pom of  microservice-new.
+copy the build tag and paste it in parent pom
 
 
+now need to copy the sourcecode, for that delete the src folder for all services, take the src folders from previous projects and paste it
+just to verify, everything is working fine, we can run a command as mvn clean verify, click the maven button on right of the intellij, click on 'm' icon and type  mvn clean verify
 
 
 
