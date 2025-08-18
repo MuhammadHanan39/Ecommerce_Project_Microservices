@@ -267,3 +267,63 @@ First make the server.port = 0 // Free port (spring boot will pick a random free
 select the inventory service from dropdown in IntelliJ -> edit configurations -> Allow parallel run check box, it will allow us to run the multiple instances of application.
 now we can replace the hardcoded port num when using WebClient, now we can use the name of the service (inventory-service)
 it will the give the error "failed to resolve 'inventory-service' after 9 queries", this is because we have multiple instances now, so client is confused which one to call, it should check the service one by one and try to call one by one, so to enable this functionality we need to configure the client side load balancing in out eureka clients.
+so for that we need to add an annotation when constructing the web client bean
+replace WebClient with WebClient.Builder, name of method as 'webClientBuilder' and return WebClient.Builder and add the @LoadBalanced annotation at top of the method -> this will enable the client side load balancing capabilities to the web client builder, now even though our order service finds multiple services of the inventory service it will call the services one by one
+change the reference in order service class as WebClient.Builder webClientBuilder
+
+
+============= Destructive Test ========
+we will break some thing and will see how our system will behave like we are going to down the eureka server.
+stop the discovery server
+still we hit the url of order service and our order is placed successfully because we have the local copy of discovery.
+now we are going to stop the both instance of inventory service and rerun the inventory serice, it will give the error as it is not able to register itself on eureka servcer because server is down (Transport Exception)
+now let's see how our order service will behave, its giving the Internal Server Error, its also give the same exception 'Transport Exception' because order service will first check the local copies of inventory service which we had shut down then order service will try to contact to discovery server to fetch the registry information but its not running that's why its giving error.
+now let's start the discovery server, first there is no serive register because clients take almost 30 seconds to register itself to discovery server so wait for them to register.
+now hit the order api now it will successfully place the order 
+
+
+
+
+
+================== 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
