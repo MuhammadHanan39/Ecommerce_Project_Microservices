@@ -259,3 +259,11 @@ eureka.client.serviceurl.defaultZone = http://localhost:8761/eureka       //prop
 we can check the services on http://localhost:8761
 spring.application.name = inventory-service  //change for others 	
 
+
+
+====================================== Mulitple Instances of Inventory Service ==========================
+Now as we saw in the theoretical examples we are going to create multiple instances of inventory service
+First make the server.port = 0 // Free port (spring boot will pick a random free port and run the inventory service on that port)
+select the inventory service from dropdown in IntelliJ -> edit configurations -> Allow parallel run check box, it will allow us to run the multiple instances of application.
+now we can replace the hardcoded port num when using WebClient, now we can use the name of the service (inventory-service)
+it will the give the error "failed to resolve 'inventory-service' after 9 queries", this is because we have multiple instances now, so client is confused which one to call, it should check the service one by one and try to call one by one, so to enable this functionality we need to configure the client side load balancing in out eureka clients.
