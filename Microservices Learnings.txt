@@ -360,6 +360,69 @@ now its fine
 
 
 
+======================== Authorization through KeyCloak Authorization server ============
+Now we need to secure our services, as now we can access any service or any endpoint without any Authorization or Authentication. 
+
+First watch the Spring Security OAUTH2 Tutotial using KeyCloak  
+
+so let's go through this tutorial first
+
+=========== What is OAUTH2 ==== 
+
+In this tutorial we are going to discuss what is OAUTH2 and how to implement OAUTH2 Features in spring boot application using spring security 
+
+we will also discuss how to implement OAUTH2 patterns for different applications like
+* Spring MVC App.
+* Single Page App like Angular with Spring Boot Backend.
+* M2M Authorization Between Microservices. (M2M - Machine to Machine)
+
+
+
+What is OAUTH2? (Open Authorization)
+Industry Standard Protocol, developed for authorization between services.
+present version of this protocol is 2.0, hence the name OAUTH2.0
+
+ ============ OAUTH Terminologies =========
+* Resource (or) Protected Resource 
+	* Anything which needs to be accessed by External Service, which needs Authorization.
+
+* Resource Owner
+	* Owner of the Protected Resource.
+
+* Resource Server 
+	* A Server which serves or hosts or stores the Protected Resource
+
+* Client 
+	* A Service or Application which is accessing the Resource through Resource Owner 
+
+   * Public Client : Web, Mobile, Desktop, Smart TV Apps which can be accessed by public 
+   * Confidential Client : Remote Shell Scripts, CRON Jobs, Microservice etc.
+
+we have different kind of Authorization flows also called Grant Types, means for different type of client we have different ways or mechanism to get the access tokens
+
+
+* Authorization Server
+	* Server that generates and validates Access Tokens for Clients and permissions for user.
+  Options of Authorization Server in market
+	* AWS Cognito
+	* Microsoft Azure AD
+	* Google Identity Platform
+	* OKTA 
+	* KeyCloak
+	* Spring Authorization Server (Early Access)
+
+if you want to manage the authorization on your own then KeyCloak is a very good option.
+
+
+
+
+============ What is OIDC ==============
+* OpenID Connect 
+* Protocol built on Top of OAUTH2 
+* Acts as an Identity Layer. when the client wants to access resource like photos from google drive, it needs an access token from Authorization server, this access token is basically a random alpha numerical set of characaters which does not provide any info about the user which makes it hard for the client to understand and get the user info, for this reason the Identity layer will send an additional token called as Identity token which contain basic info about the user like email, firstname and last name, so when the user request the token he or she will now receive 2 tokens.
+	* Access Token : Used to Verify User is Authorized to Access the Resource or not.
+	* Identity Token: Used to verify the User Info and Identity of User.
+OIDC is responsible for providing the Identity token.
 
 
 
