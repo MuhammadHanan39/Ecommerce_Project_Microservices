@@ -259,3 +259,49 @@ eureka.client.serviceurl.defaultZone = http://localhost:8761/eureka       //prop
 we can check the services on http://localhost:8761
 spring.application.name = inventory-service  //change for others 	
 
+
+
+
+
+
+
+============= KeyCLoak ============
+run the docker keycloak image as we don't want to download it manually.
+docker run -p 8181:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:18.0.0 start-dev
+
+open the http://localhost:8181
+Sign in with credential that we have configured while running the docker image 
+create a realm as spring-boot-micorservices-realm
+Realm -> concept of grouping the users or clients in a single entity
+
+create a client as "spring-boot-client" 
+select confidential client as Access Type
+
+disable the standard flow enabled 
+disable the Direct access Grants Enabled 
+select the service accounts Enabled 
+
+these are the client credentials Grant 
+click on save -> this will create the client secret 
+go to credentials tab and see the secret 
+we can use this client secret for authentication 
+after configuring the keycloak we have to provide the url of keycloak in our API Gateway 
+
+for that go to Realm Settings -> click on OpenID Endpoint Configuration -> copy the issuer url -> we need to provide this url inside our api gateway because we have to configure our API Gateway to talk to the KeyCLoak server 
+
+open the pom.xml of API Gateway project -> add dependency oauth2-resource-server  -> remove the version tab if you configure in parent
+also add the spring security dependency 
+
+
+in application.properties file of API Gateway 
+spring.security.oauth2.resource.jwt.issuer-uri=http://localhost:8181/realms/spring-boot-microservices-realm
+
+Sprig boot will read the dicovery document, and it will fetch all the endpoints to authorize  when starting the application 
+
+
+
+
+
+
+
+
