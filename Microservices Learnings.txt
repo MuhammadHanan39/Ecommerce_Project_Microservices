@@ -261,10 +261,193 @@ spring.application.name = inventory-service  //change for others
 
 
 
+<<<<<<< HEAD
+=======
+====================================== Mulitple Instances of Inventory Service ==========================
+Now as we saw in the theoretical examples we are going to create multiple instances of inventory service
+First make the server.port = 0 // Free port (spring boot will pick a random free port and run the inventory service on that port)
+select the inventory service from dropdown in IntelliJ -> edit configurations -> Allow parallel run check box, it will allow us to run the multiple instances of application.
+now we can replace the hardcoded port num when using WebClient, now we can use the name of the service (inventory-service)
+it will the give the error "failed to resolve 'inventory-service' after 9 queries", this is because we have multiple instances now, so client is confused which one to call, it should check the service one by one and try to call one by one, so to enable this functionality we need to configure the client side load balancing in out eureka clients.
+so for that we need to add an annotation when constructing the web client bean
+replace WebClient with WebClient.Builder, name of method as 'webClientBuilder' and return WebClient.Builder and add the @LoadBalanced annotation at top of the method -> this will enable the client side load balancing capabilities to the web client builder, now even though our order service finds multiple services of the inventory service it will call the services one by one
+change the reference in order service class as WebClient.Builder webClientBuilder
+
+
+============= Destructive Test ========
+we will break some thing and will see how our system will behave like we are going to down the eureka server.
+stop the discovery server
+still we hit the url of order service and our order is placed successfully because we have the local copy of discovery.
+now we are going to stop the both instance of inventory service and rerun the inventory serice, it will give the error as it is not able to register itself on eureka servcer because server is down (Transport Exception)
+now let's see how our order service will behave, its giving the Internal Server Error, its also give the same exception 'Transport Exception' because order service will first check the local copies of inventory service which we had shut down then order service will try to contact to discovery server to fetch the registry information but its not running that's why its giving error.
+now let's start the discovery server, first there is no serive register because clients take almost 30 seconds to register itself to discovery server so wait for them to register.
+now hit the order api now it will successfully place the order 
 
 
 
 
+
+================== API Gateway ================
+currect model is when the user is calling the product service, it will hit the url with some random port to access the service, same for other services
+This is fine for local development environment but it will not work for production environment as microservices has diffent instances and can run on different ports also, so for this reason we cannot rely on hardcoding these values to call the service
+Solution is API Gateway which is responsible to route the request from users to the corresponding service  
+
+API Gateway is like the entry point to our system, if user wants to call the Product Service, the user just call the normal Api gateway with normal url like online-shop.com, to be able to call the product service online-shop.com/api/product then in our API Gatewary we can configure the rules such that if we receive a request with url parameter as /api/product then route it to product service, if its /api/order then route this request to OrderService 
+
+API Gateway can :
+Routing based on Request Headers
+Authentication  -> API Gateway can communicate with Authorization Server or Authentication Mechanism we want to implement 
+Security -> we will make the API Gateway talk to our keyCloak Authorization server and will implement the security aspects
+Load Balancing -> If we have multiple instances of Product Service, if user makes a call it will make sure which instance to call to retrieve the response from service and return 
+SSL Termination (explore) -> usually when we are making a call to any external service to include the https scheme by following the TLS Protocol, if we call the API Gateway from outside with TLS scheme with https protocol, The API Gateway as its already part of microservice network so we don't need https within our own services which are being routed through API Gateway, we can just perform with simple http so that's why API Gateway terminate the SSL connection.
+We have multiple API Gateways - APG, CONG - but we will use the Spring Clouds own implementation Spring Cloud Gateway 
+
+Its not built on top of Spring MVC, its built on top of Spring WebFlux.
+
+Predicates and Filters (explore)
+
+add dependency of Gateway 
+create a new maven module, add dependency in it
+create package and create a class ApiGatewayApplication 
+add the eureka client dependency, configure the application.properties 
+eureka.client.serviceUrl.defaultzone = http://localhost:8761/eureka
+application.name = api-gateway
+@EnableEurekaClient
+
+class responsible for defining the routes and identify the routes for incoming request
+logging.level.org.springframework.cloud.gateway.route.RouteDefinitionLocator = INFO
+logging.level.root = INFO
+logging.level.org.springframework.cloud.gateway = TRACE
+  
+by adding these info we will have some more logs and we can understand what is going on behind the scene when the request is made on API Gateway 
+
+
+*Define the Route for Product Service 
+spring.cloud.gateway.routes[0].id = product-service
+spring.cloud.gateway.routes[0].uri = lb://product-service       -- lb will enable the load balancing abilities
+spring.cloud.gateway.routes[0].predicates[0] = Path=/api/product      ----- when we get the api call with this path then the API Gateway will route this particular request to the Product Service 
+
+*Define routes for OrderService     
+spring.cloud.gateway.routes[1].id = order-service
+spring.cloud.gateway.routes[1].uri = lb://order-service
+spring.cloud.gateway.routes[1].predicates[0] = Path=/api/order
+
+Run the api gateway service on 8080 port
+hit the GET api on postman http://localhost:8080/api/product  -> this request will go to API Gateway service then it will route the request to corresponding service    
+
+
+*Dicover Server Route
+spring.cloud.gateway.routes[2].id = discovery-server
+spring.cloud.gateway.routes[2].uri = lb://localhost:8761
+spring.cloud.gateway.routes[2].predicates[0] = Path=/eureka/web
+
+this will give an error NOT FOUND because the API Gateway will call the localhot:8761/eureka/web but we need to route to localhost:8761 -- so here comes the concept of filters
+we can modify the url using filters, we will remove the url parameter and change the path 
+
+spring.cloud.gateway.routes[2].filters = SetPath=/
+
+it will again give the error because of 'lb' in uri of route of eureka server as we have only one instance of this server
+
+update 'lb' to 'http' 
+
+now the request is successful but it is giving only html part of the eureka page because we have not configure the route for static files that's why its not loading the css and javascript
+
+so for that we need to configure the route for static resources
+
+spring.cloud.gateway.routes[3].id = discovery-server-static
+spring.cloud.gateway.routes[3].uri = lb://localhost:8761
+spring.cloud.gateway.routes[3].predicates[0] = Path=/eureka/**
+
+now its fine
+
+
+
+======================== Authorization through KeyCloak Authorization server ============
+Now we need to secure our services, as now we can access any service or any endpoint without any Authorization or Authentication. 
+
+First watch the Spring Security OAUTH2 Tutotial using KeyCloak  
+
+so let's go through this tutorial first
+
+=========== What is OAUTH2 ==== 
+
+In this tutorial we are going to discuss what is OAUTH2 and how to implement OAUTH2 Features in spring boot application using spring security 
+
+we will also discuss how to implement OAUTH2 patterns for different applications like
+* Spring MVC App.
+* Single Page App like Angular with Spring Boot Backend.
+* M2M Authorization Between Microservices. (M2M - Machine to Machine)
+
+
+
+What is OAUTH2? (Open Authorization)
+Industry Standard Protocol, developed for authorization between services.
+present version of this protocol is 2.0, hence the name OAUTH2.0
+
+ ============ OAUTH Terminologies =========
+* Resource (or) Protected Resource 
+	* Anything which needs to be accessed by External Service, which needs Authorization.
+
+* Resource Owner
+	* Owner of the Protected Resource.
+
+* Resource Server 
+	* A Server which serves or hosts or stores the Protected Resource
+
+* Client 
+	* A Service or Application which is accessing the Resource through Resource Owner 
+
+   * Public Client : Web, Mobile, Desktop, Smart TV Apps which can be accessed by public 
+   * Confidential Client : Remote Shell Scripts, CRON Jobs, Microservice etc.
+
+we have different kind of Authorization flows also called Grant Types, means for different type of client we have different ways or mechanism to get the access tokens
+
+
+* Authorization Server
+	* Server that generates and validates Access Tokens for Clients and permissions for user.
+  Options of Authorization Server in market
+	* AWS Cognito
+	* Microsoft Azure AD
+	* Google Identity Platform
+	* OKTA 
+	* KeyCloak
+	* Spring Authorization Server (Early Access)
+
+if you want to manage the authorization on your own then KeyCloak is a very good option.
+
+
+
+
+============ What is OIDC ==============
+* OpenID Connect 
+* Protocol built on Top of OAUTH2 
+* Acts as an Identity Layer. when the client wants to access resource like photos from google drive, it needs an access token from Authorization server, this access token is basically a random alpha numerical set of characaters which does not provide any info about the user which makes it hard for the client to understand and get the user info, for this reason the Identity layer will send an additional token called as Identity token which contain basic info about the user like email, firstname and last name, so when the user request the token he or she will now receive 2 tokens.
+	* Access Token : Used to Verify User is Authorized to Access the Resource or not.
+	* Identity Token: Used to verify the User Info and Identity of User.
+OIDC is responsible for providing the Identity token.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+>>>>>>> e0811427ae2ffed7e189f51db30b6a7e49fc5120
+
+
+
+
+<<<<<<< HEAD
 ============= KeyCLoak ============
 run the docker keycloak image as we don't want to download it manually.
 docker run -p 8181:8080 -e KEYCLOAK_ADMIN=admin -e KEYCLOAK_ADMIN_PASSWORD=admin quay.io/keycloak/keycloak:18.0.0 start-dev
@@ -297,6 +480,16 @@ in application.properties file of API Gateway
 spring.security.oauth2.resource.jwt.issuer-uri=http://localhost:8181/realms/spring-boot-microservices-realm
 
 Sprig boot will read the dicovery document, and it will fetch all the endpoints to authorize  when starting the application 
+=======
+
+
+
+
+
+
+
+
+>>>>>>> e0811427ae2ffed7e189f51db30b6a7e49fc5120
 
 
 
