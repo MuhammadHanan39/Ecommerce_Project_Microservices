@@ -479,8 +479,102 @@ also add the spring security dependency
 in application.properties file of API Gateway 
 spring.security.oauth2.resource.jwt.issuer-uri=http://localhost:8181/realms/spring-boot-microservices-realm
 
-Sprig boot will read the dicovery document, and it will fetch all the endpoints to authorize  when starting the application 
-=======
+Spring boot will read the dicovery document, and it will fetch all the endpoints to authorize  when starting the application 
+
+we have the token_endpoint api in it where spring boot will make a call to this api and verify the token is valid or not
+so instead of configuring all the values in our application.properties, we can just configure the issuer uri and spring boot will do the work behind the scenes by reading the openid-configuration document and will receive all the configurations it needs 
+
+create a SecurityConfig class in config package, add the @Configuration annotation, add the @EnableWebFluxSecurity because spring cloud gateway project is based on SpringCloudWebFlux project not on spring MVC.
+
+create a bean SecurityWebFilterChain with method parameter of ServerHttpSecurity -> inside this method, we have to configure the  webfluxsecurity details
+first disable csrf
+serverHttpSecurity.csrf.disable().authorizeExchange(exchange -> exchange.pathMatchers("/eureka/**").permitAll().anyExchange().authenticated() ) -> for only eureka static resources we want to permit all the calls but for others make sure those are authenticated
+as we are only communicating through rest api through postman client
+
+also we need to enable the resource server capability in our api gateway .oauth2ResourceServer(ServerHttpSecurity.OAuth2ResourceServerSpec::jwt);serverHttpSecurity.build()
+All our routes will be protected along with KeyCloak (??)
+
+Protection (CSRF, CORS, session management, etc.) (Explore)
+
+
+csrf(cross site request forgery)
+
+stateful apps (session-based). 
+
+
+
+
+============= Stateful And Stateless Authentication ==============
+In stateful authentication, the server keeps track of user's session.
+	When you log in:
+
+		Server creates a session (with a unique ID).	
+
+		This session info (user details, roles, etc.) is stored in server memory or database.
+
+		A session ID (like JSESSIONID) is sent to the browser as a cookie.
+	
+	On each request:
+
+		The browser automatically sends the session cookie.
+
+		Server looks up the session → finds the logged-in user.
+		
+
+
+In stateless Authentication, the server does not store any user session.
+Instead, all information needed to authenticate the user is sent with every request(usually via JWT).
+	When you log in:
+		Server generates a JWT token (conatins user info, roles, expiry).
+		Token is given to the client (browser/mobile app).
+	on each request: 
+		Client sends JWT in the Authorization: Bearer <token> header.
+		Server validates the token (signature and expiry)
+		No session storage is needed - every request is self contained 
+
+=========================
+
+* Restart the Api Gateway and hit the api on postman 
+Get -> http://localhost:8080/api/product
+when you hit, this will give you the 401 error "unauthroize request" because we didn't provide any authentication details, so in this case we have to provide bearer token (jwt token) but for that we have to create the token, we have to request the token from keycloak by providing our credentials then we will provide those credential to api gateway through the authorization header, the type of bearer scheme
+go to authorization tab -> select Auth2.0 -> in configuration options  provide the Token Name, Grant Type as Client Credentials(correct grant type when we have machine to machine communication),
+in Access token url  http://localhost:8181/realms/spring-boot... (discovery server token-endpoint url)
+Client ID -> provide that we have created "spring-cloud-client"
+Client secret -> get from keycloak realm (in Clients -> spring-cloud-client -> Credentials -> Secret)
+leave scope as it is 
+ 
+Click on get new access token -> once the authentication is completed -> postman will request keycloak for the access token -> click on use token -> now this token will be use whenever we are making a call to our microservices 
+now hit the api http://localhost:8080/api/product , we will now get the response 
+
+
+
+======== Contact the eureka server through the browser ============
+add the dependency in discovery-server  spring security, create the security config class, add the @Configuration @EnableWebSecurity
+this class extends WebSecurityConfigurerAdapter 
+Override the configure method and provide the parameter of method AuthenticationManagerBuilder
+
+@Value("${eureka.username}")
+private String eurekaUsername;
+
+@Value("${eureka.passwords}")
+private String eurekaPass;
+
+in method body -> authenticationManagerBuilder.inMemoryAuthentication().passwordEncoder(NoOpPasswordEncoder.getInstance).withUser(eurekaUsername).password(eurekaPass).authorities("USER");
+now we have basic auth created in our security config, let's add some additional configuration by overriding another configure method 
+with parameter HttpSecurity 
+in method body -> httpSecurity.csrf().diable().authorizeRequests().anyRequest().authenticated().and().httpBasic();
+
+
+dont hardcore the withUser and password value, instead create the 2 properties in application.properties file 
+eureka.username = ${EUREKA_USERNAME:eureka}  ->even generalizing, we will access it through environment variables 
+eureka.password = ${EUREKA_PASSWORD:password}
+
+we can poss these variables while running the discovery server 
+If there are no ENV variables, then the default credentials will be picked up  
+
+other services will give error because they are not authenticate to use the eureka server so we need to provide the credentials
+change the serviceUrl.defaultZone = http://username:password@localhost:8761/eureka  
+add the same property to all other services  
 
 
 
@@ -489,12 +583,7 @@ Sprig boot will read the dicovery document, and it will fetch all the endpoints 
 
 
 
->>>>>>> e0811427ae2ffed7e189f51db30b6a7e49fc5120
 
 
 
-
-
-
-
-
+  
