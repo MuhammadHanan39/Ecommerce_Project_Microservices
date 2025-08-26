@@ -425,7 +425,47 @@ if you want to manage the authorization on your own then KeyCloak is a very good
 OIDC is responsible for providing the Identity token.
 
 
+=================== KeyCloak =============
+KeyCloak is an open source Identity and Access Management Server 
 
+Download the KeyCloak 
+after downloading it, unzip the folder and open the terminal in bin folder and in order to start it, enter the command standalone.bat -Djboss.http.port=8180
+once the server is up and running, go to http://localhost:8180/ 
+it will ask to create an initial admin user account to get started and access the server, create the user and login 
+after logged in we will see the dashboard with Master Realm
+
+* Realm is like a placeholder where we can manage a set of clients, users and their roles
+each Realm is not connected to each other, if I create a user in one realm then its not available or accessible in other realm
+
+create own Realm, by clicking on Add Realm button 
+
+Create a Client, this client is going to be Spring MVC Application developed using thymeleaf
+click on Clients button and add a client 
+when we register  our client with authorization server, will get the client id and client secret 
+Access Type : public, confidential depends upon you if we are using spring mvc application so Access type is confidential 
+
+* Valid Redirect URIs this is the URI which the Authorization Server will use to send us the  Authorization code, like we want on http://localhost:8080/login/oauth2/oauth2-demo-thymeleaf-client  (this is the default redirect uri which spring boot supports, you don't need to implement this endpoint, spring boot will automatically  handle the request then keycloak will redirect to this particular uri)
+click on save
+
+now we need to create the client secret, click on credentials, the client secret is already generated for us if we want to regenerate we can click on regenerate 
+we will comeback to this once we configure our spring mvc application and also we have to create a user so that we login to our application we can do that by clicking on Users button 
+Add new User, provide the user name and click on save, to set the password, click on credentials  and provide the password  
+
+so when we hit our project url it will redirect to OAUTH2 login page, provide the credentials of user that we created it will login to localhost:8080/home (uri which we hit that will redirect to login page of keycloak server) 
+after login we have the call to redirect uri in network tab of console, if you look inside the request Query String Parameters we have state, session_state, code (authorization code) so this will be used by our application to request the token 
+as this is the server side rendered application we cannot see the call to the token endpoint as it is done in the background by our spring boot application however we can add a breakpoint to the class OidcAuthorizationCodeAuthenticationProvider
+add a breakpoint at 'return authenticationResult', refresh the browser now the execution has stopped at breakpoint, observe the varilab in Debugger tab  we have a variable accessTokenResponse and idToken where we can see the values for access token and idToken and if we observe the claim section of the idToken we can find the user information 
+
+
+
+
+
+
+
+
+
+
+  
 
 
 
