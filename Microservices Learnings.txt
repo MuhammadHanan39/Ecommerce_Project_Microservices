@@ -695,3 +695,159 @@ tracer.nextSpan().name("InventoryServiceLookup");
 tracer.withSpan(inventoryServiceLoopup.start());
 
 check next code through video 
+
+
+
+
+
+============================ Event Driven Architecture using Kafka ====================
+
+what is Event Driver Architecture?
+
+so in Order Service we are communication with inventory service in synchronous manner, like we are making an http call to order service to place the order and order service is again calling the inventory service using the rest api or http call or rest call, so this is synchronous communication
+
+we can have another kind of communication called as Asynchronous communication where the order service will make the request to inventory service and it will not wait for inventory service
+this kind of communication can be enable through event driven communication, it is nothing  but performing Asynchronous communication in the form of events.
+so whenever we receive an order to order service and order place successfully, our order service will raise and event, in this scenario it can be like OrderPlacedEvent and we can place this OrderPlacedEvent object as a message inside the kafka broker and our notification service which is the consumer, our order service is the producer of the message and notification service will be the consumer for that message, it will consume the message and process this message accordingly like sending message in the form of message or email but we are not going to implement this functionality in the notification service so we are going to setup this event driven architecture using kafka.
+
+for installation we will use the docker compose  
+open the Apache kafka Quick Start guide from Confluent Developer website -> go to docker, copy the docker compose file 
+
+create a file docker-compose.yml and paste the docker kafka code from that website
+we have 2 service in docker file, first one is zookeeper is used to orchestrate the kafka clusters, zooker_tick_time is the interval that the zoo keeper will send the heart beat messages something like eureka is doing. 
+next is kafka broker 
+open the terminal and type docker compose up -d, you can check the status of docker container by running docker ps command 
+
+so library is Spring for Apache Kafka provides development of kafka-based messaging solutions, it also support the Message-driver POJOs with @KafkaListener annotation and a listener container.
+kafkaTemplate class provide the functionality to allow the producers (in our case order service) can send messages to our consumers(notification service) and from consumer side we can define the consumer as a Listener by adding this kafkaListener annotation  
+
+now need a dependency -> go to learn -> reference doc -> introduction -> quick tour -> copy the maven dependency and paste in pom.xml of the order service, remove the version.
+
+now configure our order service to listen to the kafka broker which is running on our machine
+application.properties :
+
+
+spring.kafka.bootstrap-server=localhost:9092     //list of servers where we can find kafka installation, this property will configure the kafka in our project.
+
+inside order service we are going to make a call to kafka cluster whenever the place will be placed so for that inject the kafkaTemplate 
+
+private final  KafkaTemplate<String,OrderPlacedEvent> kafkaTemplate;
+
+and just after the orderRepository.save method  
+kafkaTemplate.send("notificationTopic", new OrderNumber(order.getOrderNumber))   // instead of sending the order.getOrderNumber() we can create a class to send the JSON object like a DTO. create a new package called as event inside that pkg create a class as OrderPlacedEvent -> has only orderNumber field for now
+
+Now kafkaTemplate will send this OrderPlacedEvent object as a message to the notificationTopic
+
+we can also define the notificationTopic as a default topic for our order service, so if we want to send multiple messages to kafka so that spring boot will understand that it has to always send the messages to notificationTopic 
+
+add property
+spring.kafka.template.default-topic=notificationTopic
+
+we also have to provide information to our spring boot project that how to serialize these key value pair when sending to the kafka broker, so we can define some serializers through spring kafka project 
+add the property 
+spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer
+
+likewise we also have to define the serializer for value that is the OrderPlacedEvent so by default its okay if you want to send the OrderPlacedEvent as a JSON object so to be able to convert this java object to JSON we have add property 
+spring.kafka.producer.value-serializer=org.springgframework.kafka.support.serializer.JsonSerializer
+
+
+========= kafka consumer ====
+now go ahead and create a consumer which is notification service 
+create a notification-service project from spring initializer -> add dependency -> Lombok, spring web, apache kafka , eureka service client, zipkin, sleuth, 
+copying the dependencies because we will create the maven module and add things manually 
+
+click on parent project -> new -> module -> maven -> next -> provide name as notification-service -> and make sure you have the parent as Microservices-new
+create a package com.programming.techie and create a NotificationServiceAppication class and paste the code or write (main class)
+
+now we need to define the kafka listener inside main class 
+
+@KafkaListener(topics = "notificationTopic")
+public void handle notification(OrderPlacedEvent  orderPlaceEvent){ //this method will take the OrderPlacedEvent as method parameter, create class OrderPlacedEvent
+// send out the email notification 
+log.info("Received notification for Order - {}",orderPlacedEvent.getOrderNumber());
+}
+
+
+so whenever a message is placed or an orderPlaceEvent is raised we are going to place the message from our order service into the kafkaTopic (notificationTopic) and the notification service is going to listen to this notificationTopic and its going to print out the message 
+
+need to configure the notification service in application.properties
+copy the eureka, zipkin, sleuth, kafka (just change serializer to deserializer from consumer side e.g notification-service) configuration
+server.port=0 
+spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer
+spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serialization.JsonDeserializer
+
+
+but from order service the fully classified class name of OrderPlacedEvent is com.programmingtechie.orderservice.event.OrderPlacedEvent
+ and in consumer side its com.programming.techie.OrderPlacedEvent so spring boot will be confuse when deserialize this object, so we have to provide the mapping type on producer side and on consumer side too
+
+
+IN order service
+spring.kafka.producer.properties.spring.json.type.mapping=event:com.programmingtechie.orderservice.event.OrderPlacedEvent   //now spring boot will understand what is the JSON type mapping of the OrderPlaceEvent
+
+
+In notification service 
+spring.kafka.consumer.properties.spring.json.type.mapping=event:com.programmingtechie.OrderPlacedEvent 
+
+
+starting the application will give an exception IllegalStateException as we have not define the groupid for the consumer 
+add spring.kafka.consumer.group-id=notificationId
+
+
+
+
+
+
+
+
+======================= Dockerize the Project =================
+First step is to dockerize all of our services and then run them together using tool called as docker compose 
+
+Install the docker desktop after installing we also need to register on Docker Hub -> this is where we push our docker images after building them on our local machine, Register for an account
+Sign in to docker desktop
+
+so let's start dockerizing the services of our projects
+starts with ApiGateway -> Create Dockerfile and Dockerfile.layered in root folder of api-gateway project 
+
+DockerFile ->
+
+FROM openjdk:17  // OpenJDK:17 -> base image 
+
+COPY target/*.jar app.jar  //copying the jar file from target folder in to container and we are calling this jar file as app.jar
+
+ENTRYPOINT ["java","-jar","/app.jar"]  //Entry point command, so whenever a container is running up or starting up it will run the command java -jar  and it will point to this app.jar file 
+
+
+open the terminal at api-gateway 
+
+to build this docker file and we have to provide the location where the docker file exists 
+docker build -t apigateway-dockerfile . // -t is tag for image, . -> means currect folder 
+
+click enter and it will try to download the OpenJDK:17 image from docker hub 
+
+let's see the image
+docker images 
+
+docker image is too large, we can do some best practices like we can use openjre image instead of OpenJDK 
+
+and when we will make change in our api-gateway project like we update one dependency then the docker file will build the whole image one more time, it does not have any contextual understanding or what is the only part we should build, for this reason docker has a concept called Multi Stage Build.
+
+Let's see how to improve our docker file using Multi Stage Build Mechanism 
+so for that we have created another file called as dockerfile.layered 
+
+FROM eclipse-temurin:17.0.4.1_1-jre as builder // we are using this eclipse-temurin jre instead of using the openjdk and giving it alias as builder
+WORKDIR extracted  // creating a work directory as extracted  
+ADD target/*.jar app.jar // we are adding this jar which inside the target folder into the container and calling it as app.jar
+RUN java -Djarmode=layertools -jar app.jar extract // as part of java 9 or 10 java supports extracting different layers from the jar files, our java application is divided in to different layers  
+
+
+FROM eclipse-temurin:17.0.4.1_1-jre
+WORKDIR application
+COPY --from=builder extracted/dependencies/ ./
+COPY --from=builder extracted/spring-boot-loader/ ./
+COPY --from=builder extracted/snapshot-dependencies/ ./
+COPY --from=builder extracted/application/ ./
+EXPOSE 8080
+ENTRYPOINT ["java","org.springframework.boot.loader.JarLaucher"]
+
+
+
