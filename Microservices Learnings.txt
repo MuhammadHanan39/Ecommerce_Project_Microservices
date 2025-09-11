@@ -800,6 +800,7 @@ add spring.kafka.consumer.group-id=notificationId
 
 
 ======================= Dockerize the Project =================
+
 First step is to dockerize all of our services and then run them together using tool called as docker compose 
 
 Install the docker desktop after installing we also need to register on Docker Hub -> this is where we push our docker images after building them on our local machine, Register for an account
@@ -834,20 +835,102 @@ and when we will make change in our api-gateway project like we update one depen
 Let's see how to improve our docker file using Multi Stage Build Mechanism 
 so for that we have created another file called as dockerfile.layered 
 
-FROM eclipse-temurin:17.0.4.1_1-jre as builder // we are using this eclipse-temurin jre instead of using the openjdk and giving it alias as builder
-WORKDIR extracted  // creating a work directory as extracted  
-ADD target/*.jar app.jar // we are adding this jar which inside the target folder into the container and calling it as app.jar
-RUN java -Djarmode=layertools -jar app.jar extract // as part of java 9 or 10 java supports extracting different layers from the jar files, our java application is divided in to different layers  
+FROM eclipse-temurin:17.0.4.1_1-jre as builder       // we are using this eclipse-temurin jre instead of using the openjdk and giving it alias as builder
+WORKDIR extracted         // creating a work directory as extracted inside the container
+ADD target/*.jar app.jar          // we are adding this jar which inside the target folder into the container and calling it as app.jar
+RUN java -Djarmode=layertools -jar app.jar extract      // as part of java 9 or 10 java supports extracting different layers from the jar files, our java application is divided in to different layers  (It doesn’t run your app yet — instead, it “extracts” your fat jar into layers) (extract command at the last is used from extracting all the layers from jar file and store it inside the extracted folder)
 
+* This is the first stage of docker build we want to do 
+* below the second stage 
 
-FROM eclipse-temurin:17.0.4.1_1-jre
+--This stage only contains what’s needed to run your app (no build tools, no Maven, nothing extra)--
+FROM eclipse-temurin:17.0.4.1_1-jre  // says use this java official Java17 image 
 WORKDIR application
 COPY --from=builder extracted/dependencies/ ./
-COPY --from=builder extracted/spring-boot-loader/ ./
+COPY --from=builder extracted/spring-boot-loader/ ./                         (copy these four necessary layers or folders from the extracted folder into our application folder)
 COPY --from=builder extracted/snapshot-dependencies/ ./
 COPY --from=builder extracted/application/ ./
-EXPOSE 8080
-ENTRYPOINT ["java","org.springframework.boot.loader.JarLaucher"]
+EXPOSE 8080     // exposing 8080, tells docker that our application will listen on port 8080 (Doesn’t actually open it, just documents it for Docker)
+ENTRYPOINT ["java","org.springframework.boot.loader.JarLaucher"]           //Define the command to run when the container starts, here it runs the Spring boot launcher that knows how to stitch back the layers into running app.
+
+
+
+now if we change just version inside the dependencies, docker will understand that okay only file which is changed is inside the dependencies folder so let's build only this particular folder or just copy dependencies folder in to our application directory and rest of all will be the same, so in this way we can save the build times 
+
+Dockerfile tells Docker how to build the docker image(like a packaged environment) that can run your Java (Spring boot application)
+
+
+
+Okay so go ahead and build this Dockerfile.layered
+open the terminal \api-gateway> docker build -t apigateway-layered -f Dockerfile.layered . (if we dont mention the layered file, it will build the docker file)  
+it will build the docker image in multiple stages 
+
+check the image
+docker images 
+last time when we build image using docker file has more MBs than Dockerfile.layered file, so the size becomes less and we can also divided the folders in mutliple stages
+
+
+Next step is how to build the docker images from source code without using any docker files, how to build the docker images automatically
+
+we can make use of library called Jib : Jib handles all steps of packaging your application into a container image. You don't need to know best practices for creating Dokerfiles or have Docker installed.
+used to build containers from our java applications without using docker file or installing docker 
+
+
+
+
+
+open the pom.xml of root or parent project 
+
+add a plugin of jib (check video or explore from jib documentation)
+after adding this plugin, we have to click on jib build button, you can from maven button at right in IntelliJ IDE >plugins>jib>jib:build
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
