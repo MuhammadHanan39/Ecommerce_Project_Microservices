@@ -883,7 +883,19 @@ open the pom.xml of root or parent project
 
 add a plugin of jib (check video or explore from jib documentation)
 after adding this plugin, we have to click on jib build button, you can from maven button at right in IntelliJ IDE >plugins>jib>jib:build
+jib will create dockerfile and create the image and push it on docker hub
 
+mvn clean compile jib:build
+
+this will give error 401 Unauthorized exception because we are pushing this image to our docker hub but we didn't provide our docker hub credentials
+open the setting.xml file and add <servers> <server> <id> registry.hub.docker.com</id> <username> your docker hub username</username> <password> your docker hub password </password>
+
+
+now again run the command mvn clean compile jib:build.
+
+
+verify the images docker images also verify these images are pushed on to the docker hub or not 
+sign in to docker hub and you will see the services now we can make use of this images and download all these images and run those containers using docker compose 
 
 
 
