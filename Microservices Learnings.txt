@@ -951,6 +951,61 @@ keep in mind we need this when we need to communicate the docker container from 
 
 now we are getting the response 
 
+=========== End of Dockerize the project ========
+
+============== Monitoring the application using prometheus and grafana ==========
+
+we will concentrate on monitoring across all our services and how to view our status of our services in our dashboard
+
+To monitor our application we will mainly be using 2 softwares 
+Prometheus ->which will scrap all the matrix from our spring boot application and will store in In Memory database 
+and we will visualize this matrix using another software called as 
+Grafana
+
+
+
+=========== how to implement monitoring =============
+our spring boot application will make use of the Spring Actuator end points which will expose all the matrix of our application like the JVM matrics and other matrics we want to maintain, it will be exposed by our spring boot application using spring boot actuator
+we will setup the Prometheus software and will poll our spring boot actuator endpoint for every predefined seconds and store it inside the Prometheus and store it inside the In Memory database, this prometheus will act like the datasource for Grafana, which provides the UI dashboard, Grafana also polls prometheus so whenever there is a new entry Grafana will updated and show the matrix in our dashboard 
+so let's setup this whole structure in our project 
+
+
+Add the necessary dependies for our services to enable spring boot actuator 
+dependencise -> spring boot actuator, Prometheus -> add them in all of our services 
+after successfull download we need to add the actuator endpoint in our application 
+
+open the application.properties file of API GATEWAY 
+management.endpoints.web.exposure.include= prometheus   // so by default all the health point will be exposed by actuator so we also want to include the Prometheus endpoints, by adding this value we can access the /actuator/prometheus   
+
+copy and paste the above property in each service
+
+
+so after adding these dependencies and also updated our application code, the next step is to build the docker images using the jib plugin, so for that we have to run the command mvn clean compile jib:build
+after successful build so the next step is to install prometheus and grafana, as we are using the docker compose we can use the pre existing docker images and spin up the prometheus and grafana as part of the docker compose orchestration
+
+open the docker-compose file and paste the docker compose configuration of prometheus and grafana (get from video or search how to get it)  
+   
+after the dcoker-compose file, next step is to create the prometheus configuration file 
+right click on the root folder and create a new folder called as prometheus, in that folder create a new file prometheus.yml (paste the configuration file, search where I can find that configuration and explore)
+
+let start all of our services using docker compose command 
+docker compose up -d 
+
+
+docker logs -f prometheus
+
+open the browser and hit localhost:9090 -> redirect to default prometheus UI, here we can search for some default metrics which are exposed by our spring boot actuator endpoint or microservices 
+
+to setup the Grafana, hit the localhost:3000 -> this will open the default Grafana, we have configured the pass for it in docker-compose file 
+
+first we need to create a datasource in grafana to visualize the matrix, we are using prometheus as a datasource, click on first datasource option, click on prometheus, name as Prometheus Microservices, define the url as http://prometheus:9090 (prometheus is name of container which is running and its running on port 9090), click on save and test, 
+next thing we need to create a dashboard, creating custom dashboard can be challenging task it needs alot of configuration but we can import the some existing dashboard configuration 
+
+open the github.com/SaiUpadhyayula/spring-boot-microservices-new/tree/part-10  -> in part-10 branch, we can find a Grafana_Dashboard.json file, copy everything which is inside this file and paste it in import via panel json section of Grafana, click on load, select the prometheus microservices as datasource, click on import,now you can see beautiful dashboard 
+
+
+
+================= END of Spring Boot Microservice Project Full Course in 6 Hours By Programming Techie ===================   
  
 
 
