@@ -898,6 +898,62 @@ verify the images docker images also verify these images are pushed on to the do
 sign in to docker hub and you will see the services now we can make use of this images and download all these images and run those containers using docker compose 
 
 
+--- Docker compose file ---
+
+so now we have all our images in to the docker hub, next step is to create the docker compose file
+
+refer the docker-compose.yml file under the root folder of microservices project
+
+In our Architecture of project we are using the MySQL, MongoDB, AuthServer (keycloak also uses MySQL), zookeeper and kafka, zipkin so first of all we need to setup these external services in our docker-compose file  
+we are using the postgreSQL instead of mysql
+
+
+
+version: '3'
+
+services: 
+	(explore this from video) 
+
+
+====Explore docker-compose tutorial====
+After docker-compose file
+Add the data.sql files under src/main/resource folder for both inventory and order services
+CREATE DATABASE IF NOT EXISTS 'order-service'
+CREATE DATABASE IF NOT EXISTS 'inventory-service'
+
+run the command
+docker compose up -d   //this will pull all the images which are required for all the services defined inside the docker-compose file and it will run containers for those images in a Daemon mode 
+once they are up and running we can go to our postman and start making calls to our microservices project 
+
+check the logs -> docker logs -f broker  // logs of kafka broker  
+
+check the logs -> docker logs -f order-service  // logs of order service 
+
+
+go to postman and get the access token from the keycloak 
+
+but we need Client secret for defined Client id because now the application is running on docker and whenever we restart the docker, docker will create new client Secret
+so for that first we have to open our keycloak, login with configured credentials in docker-compose file, regenerate the secret and copy and replace the client secret in postman 
+
+Authorization tab in postman -> paste the new generated client secret -> click on Get New Access Token -> click on user this token -> hit the api
+
+got 401 unauthorized exception, we are checking the logs, first we are checking the API-GATEWAY because it is the starting point of application , it is giving error Authentication Failes: The iss claim is not valid
+go to jwt.io and paste the token you will get the structure data and check what is iss 
+so iss has the url of localhost so application is trying to hit the api on localhost , we need to change it as keycloak 
+so in Authorization tab in postman  we have the Access Token URL as localhost, replace it with keycloak then it will point to keycloak which is running in our machine 
+
+Still the Authentication Failed because we are trying to contact the docker container directly with the hostname, so to be able to contact this docker container from our host we need to do some small changes in our system, open the file name as hosts and we have to inform our windows host to redirect all the traffics from keycloak to a localhost (file directory -> 	windows/system32/drivers/etc/host) -> need to change it in administrator mode  
+add -> 127.0.0.1 keycloak  
+
+now our postman will be able to contact the keycloak docker container 
+now click on Get New Access Token  -> now the Authentication will be completed -> by adding this particular line we are able to communicate from our localhost to the docker host to the hostname otherwise there will be some DNS problems 
+keep in mind we need this when we need to communicate the docker container from our local and we don't need to do this when we are doing it in production
+
+now we are getting the response 
+
+ 
+
+
 
 
 
